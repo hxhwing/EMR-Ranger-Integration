@@ -1,5 +1,5 @@
 
-# EMR 5.30集成ranger
+# EMR 5.30集成Apache Ranger 2.x
 
 ## 说明
 将Apache Ranger 2.1与Amazon EMR集成，实现Hive，Presto应用基于数据库，表，列的权限控制。
@@ -570,7 +570,7 @@ sudo /opt/solr/ranger_audit_server/scripts/start_solr.sh
 通过浏览器打开http://ranger-server:6080 验证ranger是否安装成功，默认用户名密码为admin/admin，如果在配置中修改了默认密码，请使用配置中的密码登录。
 
 
-## 启动EMR集群
+## 四. 启动EMR集群
 
 启动EMR集群，选择Advanced Option
 - 选择EMR 5.30版本，Hadoop，Hive，Hue，Spark，Presto
@@ -581,9 +581,9 @@ sudo /opt/solr/ranger_audit_server/scripts/start_solr.sh
 - 为EMR集群指定EC2 Key Pair，另外Presto如果使用用户名和密码认证，则要求使用https，所以需要在Security Configuration中指定证书（Security Configuration需要提前配置，具体参考官方文档）
 ![EMR Security](./pics/EMR-security.png)
 
-## 启动完成后，为EMR Master安装Ranger Plugin
+## 五. 为EMR Master安装Ranger Plugin
 
-### 准备安装包
+### 5.1 准备安装包
 需要将以下安装包放到S3上，并记录S3的路径，需要在Plugin的安装脚本中指定S3路径
 
 [HDFS Plugin](https://hxh-tokyo.s3-ap-northeast-1.amazonaws.com/ranger/ranger-2.1.0-SNAPSHOT-hdfs-plugin.tar.gz)
@@ -600,14 +600,14 @@ sudo /opt/solr/ranger_audit_server/scripts/start_solr.sh
 
 [mysql-connector-java-5.1.39.jar](https://hxh-tokyo.s3-ap-northeast-1.amazonaws.com/ranger/mysql-connector-java-5.1.39.jar)
 
-### 安装 Hive Plugin
+### 5.2 安装 Hive Plugin
 
 首先需要将HDFS/Hive安装脚本install-hive-hdfs-ranger-plugin.sh中的s3 bucket路径替换成自己的路径：
 ```
 ranger_s3bucket=s3://hxh-tokyo/ranger
 ```
 
-然后可以通过Step提交脚本，或者直接登录到EMR Master执行脚本`install-hive-hdfs-ranger-plugin.s`.
+然后可以通过Step提交脚本，或者直接登录到EMR Master执行脚本`install-hive-hdfs-ranger-plugin.sh`.
 
 **以通过Step提交脚本为例：脚本文件可以放在S3上，注意需要指定Ranger Server的IP地址作为脚本参数**
 
@@ -622,7 +622,7 @@ s3://hxh-tokyo/ranger/install-hive-hdfs-ranger-plugin.sh 172.31.43.166
 ![Install Hive Plugin](./pics/HivePlugin.png)
 
 
-### 安装 Presto Plugin
+### 5.3 安装 Presto Plugin
 
 首先需要将Presto安装脚本install-presto-ranger-plugin.sh中的s3 bucket路径替换成自己的路径：
 
@@ -645,7 +645,7 @@ s3://hxh-tokyo/ranger/install-presto-ranger-plugin.sh 172.31.43.166
 ![Install Presto Plugin](./pics/PrestoPlugin.png)
 
 
-### 配置 Ranger 授权策略
+## 六. 配置 Ranger 授权策略
 
 为Ranger配置基于Resource的授权策略，可以通过Ranger Admin的Web UI手动配置，也可以通过脚本的方式，利用Ranger API配置。建议先使用脚本配置初始策略，再通过Ranger UI进行修改。
 
@@ -653,7 +653,7 @@ s3://hxh-tokyo/ranger/install-presto-ranger-plugin.sh 172.31.43.166
 
 首先将Ranger Policies的策略文件放到S3上，并记录路径，例如s3://hxh-tokyo/ranger/policies
 
-#### 加载HDFS和Hive策略
+### 6.1 加载HDFS和Hive策略
 
 首先确认将脚本中的策略文件S3路径，修改为自己的S3路径
 ```
@@ -675,7 +675,7 @@ s3://hxh-tokyo/ranger/install-hive-hdfs-ranger-policies.sh 172.31.43.166
 ![Install HDFS/Hive Policy](./pics/HivePolicies.png)
 
 
-#### 加载Presto策略
+### 6.2 加载Presto策略
 
 首先确认将脚本中的策略文件S3路径，修改为自己的S3路径
 ```
@@ -697,10 +697,10 @@ s3://hxh-tokyo/ranger/install-presto-ranger-policies.sh 172.31.43.166
 ![Install Presto Policy](./pics/PrestoPolicies.png)
 
 
-### 验证Ranger权限控制
+## 七. 验证Ranger权限控制
 
 
-#### 登录Ranger Admin UI查看Resource Access policy
+### 登录Ranger Admin UI查看Resource Access policy
 
 
 1. 查看Hive 策略
@@ -720,7 +720,7 @@ s3://hxh-tokyo/ranger/install-presto-ranger-policies.sh 172.31.43.166
 ![Presto-HueTest](./pics/Presto-HueTest.png)
 
 
-#### 登录Hue，验证Ranger策略
+### 登录Hue UI，验证Ranger策略
 
 1. 使用用户名为hue的LDAP用户登录Hue应用，密码为LDAP上的密码
 
@@ -742,7 +742,9 @@ s3://hxh-tokyo/ranger/install-presto-ranger-policies.sh 172.31.43.166
 
 ![Hue-error2](./pics/Hue-error2.png)
 
-3. 另外也可以通过在EMR Master上执行命令进行验证
+### 登录EMR Master，验证Ranger策略
+
+另外也可以通过在EMR Master上执行命令进行验证
 
 **Hive应用验证**
 ```
