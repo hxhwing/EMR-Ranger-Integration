@@ -14,9 +14,15 @@
 
 **注意：**
 
-**第一部分为安装OpenLDAP，也可以使用Amazon Directory Service中的SimpleAD来代替**
+ - **第一部分为安装OpenLDAP，也可以使用Amazon Directory Service中的SimpleAD来代替**
 
-**第二部分中，Ranger的安装包需要用户自行build，默认Ranger2.x要求Hive版本为3.x，Presto只支持PrestoSQL，不支持Prestodb，所以本文后半部分使用的是自行**
+ - **默认Ranger2.x要求Hive版本为3.x，对Presto只支持PrestoSQL，不支持Prestodb。而EMR 5.x只支持hive2和Prestodb，所以原生的Ranger 2.x不支持EMR 5.x。通过原生Ranger 2.x build出来的Plugin pacakage，只支持EMR 6.x的hive3**
+
+ - **本文档中，使用的Ranger Hive Plugin和Ranger Prestodb Plugin安装包，均来自以下AWS Blog，安装包是由作者基于基于原生Ranger 2.1手动做了很多定制化，用来兼容EMR 5.x版本的Hive 2.x和Prestodb**
+
+    [Implementing Authorization and Auditing using Apache Ranger on Amazon EMR](https://aws.amazon.com/blogs/big-data/implementing-authorization-and-auditing-using-apache-ranger-on-amazon-emr/)
+
+ - **本文档已完成EMR 5.30版本的兼容性测试，未对EMR 6.x进行测试**
 
 
 ## 一. 安装OpenLDAP
@@ -720,7 +726,7 @@ s3://hxh-tokyo/ranger/install-presto-ranger-policies.sh 172.31.43.166
 ![Presto-HueTest](./pics/Presto-HueTest.png)
 
 
-### 登录Hue UI，验证Ranger策略
+### 登录Hue UI，验证 Ranger 策略
 
 1. 使用用户名为hue的LDAP用户登录Hue应用，密码为LDAP上的密码
 
@@ -742,7 +748,7 @@ s3://hxh-tokyo/ranger/install-presto-ranger-policies.sh 172.31.43.166
 
 ![Hue-error2](./pics/Hue-error2.png)
 
-### 登录EMR Master，验证Ranger策略
+### 登录EMR Master，验证 Ranger 策略
 
 另外也可以通过在EMR Master上执行命令进行验证
 
@@ -834,3 +840,68 @@ Query 20200927_105804_00025_8krzd failed: Access Denied: Cannot access catalog h
 
 presto:default>
 ```
+
+## 八. 使用Bootstrap安装Ranger Plugin
+
+众所周知，EMR Bootstrap脚本是在EMR安装和配置各个EMR应用之前运行，由于Ranger Plugin的安装需要依赖Plugin对应的应用，例如安装Ranger Hive Plugin时需要依赖Hive server，所以不能在Bootstrap中直接安装Ranger Plugin。
+
+在EMR的启动过程中，对于需要在应用安装部署完成之后才运行的脚本，可以放到/usr/share/aws/emr/node-provisioner/bin/provision-node 中去执行。
+
+所以本文档是在Bootstrap过程中，将需要执行的Ranger Hive和Presto Plugin安装脚本，加载到/usr/share/aws/emr/node-provisioner/bin/provision-node中，从而让节点在完成EMR应用的配置和启动后，再去安装Ranger Plugin。
+
+**该Boostrap脚本主要是用于EMR Multi Master环境，自动在各个Master节点上，安装Ranger Plugin，而在Master节点发生故障，被新启动的Master替换的时候，也会自动加载Bootstrap，完成Ranger Plugin的安装**
+
+**对于单Master的EMR集群，只是在启动时安装配置一次，且不存在Master故障替换的情况，所以可以选择第五章节中介绍的，通过Step提交Ranger Plugin的安装任务。当然也可以使用本章节中的Bootstrap脚本进行Ranger Plugin的安装。**
+
+![EMR Bootstrap](./pics/EMR-bootstrap.png)
+
+Bootstrap脚本如下：
+
+**(!!!注意需要将脚本里的IP地址 172.31.43.166 替换成自己的Ranger Admin Server的IP地址)**
+
+```
+## Ranger-bootstrap.sh ##
+#set up after_provision_action.sh script to be executed after applications are provisioned. 
+IS_MASTER=$(cat /mnt/var/lib/info/instance.json | jq -r ".isMaster" | grep "true" || true);
+
+cd /tmp
+if [ $IS_MASTER ]; then
+	wget https://hxh-tokyo.s3-ap-northeast-1.amazonaws.com/ranger/install-hive-hdfs-ranger-plugin.sh;
+	sudo chmod +x /tmp/install-hive-hdfs-ranger-plugin.sh;
+	wget https://hxh-tokyo.s3-ap-northeast-1.amazonaws.com/ranger/Check-and-Install-Presto-Plugin.sh;
+	sudo chmod +x /tmp/Check-and-Install-Presto-Plugin.sh;
+	sudo sed 's/null &/null \&\& \/tmp\/install-hive-hdfs-ranger-plugin.sh 172.31.43.166 >> $STDOUT_LOG 2>> $STDERR_LOG \&\& \/tmp\/Check-and-Install-Presto-Plugin.sh 172.31.43.166 >> $STDOUT_LOG 2>> $STDERR_LOG \&\n/' /usr/share/aws/emr/node-provisioner/bin/provision-node > /tmp/provision-node.new;
+	sudo cp /tmp/provision-node.new /usr/share/aws/emr/node-provisioner/bin/provision-node;
+
+fi;
+
+exit 0
+```
+Bootstrap步骤：
+1. 检查通过/mnt/var/lib/info/instance.json，检查节点是否是Master，Ranger Plugin只需要在Master节点上安装
+2. 如果是Master，下载两个脚本，并将两个脚本加入到/usr/share/aws/emr/node-provisioner/bin/provision-node，使脚本在Master节点上的Hive/Presto应用安装部署完成后才运行。
+  - 第一个脚本： install-hive-hdfs-ranger-plugin.sh ， 即在所有Master节点上安装运行HDFS和Hive的Ranger Plugin，对于Multi Master集群的三台Master，Hive server会在三台上分别启动，HDFS Name Node会在其中两台Master中启动，所以在所有Master节点上运行该脚本之后，会自动完成Hive和HDFS Ranger Plugin的安装，对于非HDFS Name Node的Master节点，HDFS会安装失败，但不影响该节点上Ranger Hive Plugin的安装和运行
+  
+  - 第二个脚本：Check-and-Install-Presto-Plugin.sh ， 对于Multi Master集群的三台Master，只有一台Master是Presto Server，而三台都会运行Presto Client，且EMR会自动将Presto Server所在的Host FQDN加载到Presto client的配置文件中/etc/presto/conf/config.properties。所以该脚本会先检查该Master是否是Presto Server，如果是，才会运行Presto Ranger Plugin的安装
+  ```
+## Check-and-Install-Presto-Plugin.sh  ##
+##Check if local server is Presto server or not
+host=$(hostname -f)
+PrestoURI=$(echo https://$host:8446)
+grep $PrestoURI /etc/presto/conf/config.properties
+Presto_Installed=$(echo $?)
+
+ranger_ip=$1
+
+cd /tmp
+if [ "$Presto_Installed" -eq "0" ]; then
+	wget https://hxh-tokyo.s3-ap-northeast-1.amazonaws.com/ranger/install-presto-ranger-plugin.sh;
+	sudo chmod +x /tmp/install-presto-ranger-plugin.sh;
+	sudo -E bash /tmp/install-presto-ranger-plugin.sh $ranger_ip;
+fi;
+
+exit 0
+
+  ```
+
+
