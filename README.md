@@ -1,6 +1,26 @@
 
 # EMR 5.30集成Apache Ranger 2.x
 
+## Table of Contents
+========================
+ * [说明](#说明)
+  * [一. 安装OpenLDAP](#一.-安装OpenLDAP)
+  * [二. Build Ranger安装包](#二.-Build-Ranger安装包)
+  * [三. 安装 Ranger Server](#三.-安装-Ranger-Server)
+  * [四. 启动EMR集群](#四.-启动EMR集群)
+  * [五. 为EMR Master安装Ranger Plugin](#五.-为EMR-Master安装Ranger-Plugin)
+    + [5.1 准备安装包](#5.1-准备安装包)
+    + [5.2 安装 Hive Plugin](#5.2-安装-Hive-Plugin)
+    + [5.3 安装 Presto Plugin](#5.3-安装-Presto-Plugin)
+  * [六. 配置 Ranger 授权策略](#六.-配置-Ranger-授权策略)
+    + [6.1 加载HDFS和Hive策略](#6.1-加载HDFS和Hive策略)
+    + [6.2 加载Presto策略](#6.2-加载Presto策略)
+  * [七. 验证Ranger权限控制](#七.-验证Ranger权限控制)
+    + [登录Ranger Admin UI查看Resource Access policy](#登录Ranger-Admin-UI查看Resource-Access-policy)
+    + [登录Hue UI验证Ranger策略](#登录Hue-UI验证Ranger策略)
+    + [登录EMR Master验证Ranger策略](#登录EMR-Master验证Ranger策略)
+  * [八. 使用Bootstrap自动安装Ranger Plugin](#八.-使用Bootstrap自动安装Ranger-Plugin)
+
 ## 说明
 将Apache Ranger 2.1与Amazon EMR集成，实现Hive，Presto应用基于数据库，表，列的权限控制。
 
@@ -18,7 +38,7 @@
 
  - **默认Ranger2.x要求Hive版本为3.x，对Presto只支持PrestoSQL，不支持Prestodb。而EMR 5.x只支持hive2和Prestodb，所以原生的Ranger 2.x不支持EMR 5.x。通过原生Ranger 2.x build出来的Plugin pacakage，只支持EMR 6.x的hive3**
 
- - **本文档中，使用的Ranger Hive Plugin和Ranger Prestodb Plugin安装包，均来自以下AWS Blog，安装包是由作者基于基于原生Ranger 2.1手动做了很多定制化，用来兼容EMR 5.x版本的Hive 2.x和Prestodb**
+ - **本文档中，使用的Ranger Hive Plugin和Ranger Prestodb Plugin安装包，均来自以下AWS Blog，安装包是由Blog作者基于基于原生Ranger 2.1手动做了很多定制化，用来兼容EMR 5.x版本的Hive 2.x和Prestodb**
 
     [Implementing Authorization and Auditing using Apache Ranger on Amazon EMR](https://aws.amazon.com/blogs/big-data/implementing-authorization-and-auditing-using-apache-ranger-on-amazon-emr/)
 
@@ -627,6 +647,12 @@ s3://hxh-tokyo/ranger/install-hive-hdfs-ranger-plugin.sh 172.31.43.166
 
 ![Install Hive Plugin](./pics/HivePlugin.png)
 
+注意：如果手动运行脚本安装Plugin的时候，运行enable-hive-plugin.sh这个脚本出现以下报错，或者在/var/log/hive/hive-server2.log出现类似报错，是由于Hive Plugin安装包在定制的过程中，缺少一部分Jar包，但不影响Plugin正常工作，该报错可以忽略，实际上HDFS和Hive的Plugin均已正常安装和运行
+
+![Hive Plugin Error](./pics/HivePlugin-error.jpg)
+
+
+
 
 ### 5.3 安装 Presto Plugin
 
@@ -726,7 +752,7 @@ s3://hxh-tokyo/ranger/install-presto-ranger-policies.sh 172.31.43.166
 ![Presto-HueTest](./pics/Presto-HueTest.png)
 
 
-### 登录Hue UI，验证 Ranger 策略
+### 登录Hue UI验证Ranger策略
 
 1. 使用用户名为hue的LDAP用户登录Hue应用，密码为LDAP上的密码
 
@@ -748,7 +774,7 @@ s3://hxh-tokyo/ranger/install-presto-ranger-policies.sh 172.31.43.166
 
 ![Hue-error2](./pics/Hue-error2.png)
 
-### 登录EMR Master，验证 Ranger 策略
+### 登录EMR Master验证Ranger策略
 
 另外也可以通过在EMR Master上执行命令进行验证
 
@@ -841,7 +867,7 @@ Query 20200927_105804_00025_8krzd failed: Access Denied: Cannot access catalog h
 presto:default>
 ```
 
-## 八. 使用Bootstrap安装Ranger Plugin
+## 八. 使用Bootstrap自动安装Ranger Plugin
 
 众所周知，EMR Bootstrap脚本是在EMR安装和配置各个EMR应用之前运行，由于Ranger Plugin的安装需要依赖Plugin对应的应用，例如安装Ranger Hive Plugin时需要依赖Hive server，所以不能在Bootstrap中直接安装Ranger Plugin。
 
@@ -904,4 +930,10 @@ exit 0
 
   ```
 
+对于Multi Master的EMR集群，如果某台Master节点发生故障，则EMR服务会重启启动一台Master，新的Master保留原有Master的Hostname，IP地址以及EMR application。
 
+例如Presto Server所在的Master节点故障，EMR服务会重新启动一台相同IP和Hostname的Master，重新部署所有EMR应用，集群其他Master节点上Presto Client的配置不变，还是指向这台新的Presto Server。
+
+同时，Bootstrap脚本也会在新Master启动的时候运行，重新安装Ranger Plugin。
+
+![Master Failure](./pics/Master-failure.png)
