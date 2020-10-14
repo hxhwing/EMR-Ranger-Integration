@@ -4,7 +4,7 @@
 ## Table of Contents
 ========================
  * [说明](#说明)
-  * [一. 安装OpenLDAP](#一.-安装OpenLDAP)
+  * [一. 安装OpenLDAP](#一.安装OpenLDAP)
   * [二. Build Ranger安装包](#二.-Build-Ranger安装包)
   * [三. 安装 Ranger Server](#三.-安装-Ranger-Server)
   * [四. 启动EMR集群](#四.-启动EMR集群)
@@ -45,7 +45,7 @@
  - **本文档已完成EMR 5.30版本的兼容性测试，未对EMR 6.x进行测试**
 
 
-## 一. 安装OpenLDAP
+## 一.安装OpenLDAP
 
 1. 安装OpenLDAP server
 
