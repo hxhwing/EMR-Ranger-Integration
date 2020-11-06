@@ -1267,10 +1267,9 @@ Presto启用LDAP认证，需要在Presto配置文件中，添加LDAP相关配置
 
 另外Presto LDAP认证，只支持LDAPS，所以需要将LDAP server的证书导入到EMR集群中，作为LDAP over TLS的证书。
 
-通过Bootstrap的方式，将证书下载集中节点，并导入到JAVA的信任证书中.
+通过Bootstrap的方式，将证书下载到每个集群节点，并导入到JAVA的信任证书中.
 ```
-##Download-import-LDAP-cert.sh
-
+Download-import-LDAP-cert.sh
 ##Download LDAP server certificate and import it to all EMR nodes
 
 aws s3 cp s3://hxh-tokyo/ranger/ldap.crt .
