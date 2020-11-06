@@ -1241,7 +1241,7 @@ Beeline version 2.3.6-amzn-2 by Apache Hive
 ```
 LDAP认证成功后，会根据Ranger上对应用户的授权策略，获取相应的权限。
 
-十. 为Presto启用LDAP认证
+## 十. 为Presto启用LDAP认证
 
 Presto启用LDAP认证，需要在Presto配置文件中，添加LDAP相关配置。
 
