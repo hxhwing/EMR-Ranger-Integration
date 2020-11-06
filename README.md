@@ -20,6 +20,9 @@
     + [登录Hue UI验证Ranger策略](#登录Hue-UI验证Ranger策略)
     + [登录EMR Master验证Ranger策略](#登录EMR-Master验证Ranger策略)
   * [八. 使用Bootstrap自动安装Ranger Plugin](#八-使用Bootstrap自动安装Ranger-Plugin)
+  * [九. 为Hive启用LDAP认证](#九-为Hive启用LDAP认证)
+  * [十. 为Presto启用LDAP认证](#十-为Presto启用LDAP认证)
+  
 
 ## 说明
 将Apache Ranger 2.1与Amazon EMR集成，实现Hive，Presto应用基于数据库，表，列的权限控制。
@@ -87,26 +90,27 @@ vim domain_config.ldif
 dn: olcDatabase={1}monitor,cn=config
 changetype: modify
 replace: olcAccess
-olcAccess: {0}to * by dn.base="gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" read by dn.base="cn=bdpadmin,dc=bnb,dc=internal" read by * none
+olcAccess: {0}to * by dn.base="gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" read by dn.base="cn=rangeradmin,dc=ap-northeast-1,dc=compute,dc=internal" read by * none
 
 dn: olcDatabase={2}hdb,cn=config
 changetype: modify
 add: olcRootPW
-olcRootPW: *********   ##替换为上一步生成的password
+olcRootPW: {SSHA}7mJdo1oc+MMnl+oNjAASkz9U45oAYWmP   
 -
 replace: olcRootDN
-olcRootDN: cn=bdpadmin,dc=bnb,dc=internal
+olcRootDN: cn=rangeradmin,dc=ap-northeast-1,dc=compute,dc=internal
 -
 replace: olcSuffix
-olcSuffix: dc=bnb,dc=internal
+olcSuffix: dc=ap-northeast-1,dc=compute,dc=internal
 -
 add: olcAccess
-olcAccess: {0}to attrs=userPassword by self write by dn.base="cn=bdpadmin,dc=bnb,dc=internal" write by anonymous auth by * none
-olcAccess: {1}to * by dn.base="cn=bdpadmin,dc=bnb,dc=internal" write by self write by * read
+olcAccess: {0}to attrs=userPassword by self write by dn.base="cn=rangeradmin,dc=ap-northeast-1,dc=compute,dc=internal" write by anonymous auth by * none
+olcAccess: {1}to * by dn.base="cn=rangeradmin,dc=ap-northeast-1,dc=compute,dc=internal" write by self write by * read
 
 ##应用配置
 sudo ldapadd -Y EXTERNAL -H ldapi:/// -f domain_config.ldif
 ```
+
 5. 导入LDAP Schema
 ```
 sudo ldapadd -Y EXTERNAL -H ldapi:/// -f /etc/openldap/schema/core.ldif
@@ -120,124 +124,74 @@ sudo ldapadd -Y EXTERNAL -H ldapi:/// -f /etc/openldap/schema/inetorgperson.ldif
 ```
 vim domain.ldif
 >> 
-dn: dc=bnb,dc=internal
+dn: dc=ap-northeast-1,dc=compute,dc=internal
 objectClass: dcObject
 objectClass: organization
-dc: bnb
-o : bnb
+#dc: compute
+o : compute
 
-sudo ldapadd -D "cn=bdpadmin,dc=bnb,dc=internal" -W -f domain.ldif
+##应用配置
+sudo ldapadd -D "cn=rangeradmin,dc=ap-northeast-1,dc=compute,dc=internal" -W -f domain.ldif
 ```
 
-7. 创建OU
-```
-vim ou.ldif
->> 
-dn: ou=tech,dc=bnb,dc=internal
-objectclass: organizationalUnit
-ou: tech
-description: Container for tech user entries
-
-sudo ldapadd -D "cn=bdpadmin,dc=bnb,dc=internal" -W -f ou.ldif
-```
-
-8. 导入Ldap数据库
+7. 导入Ldap数据库
 ```
 sudo cp /usr/share/openldap-servers/DB_CONFIG.example /var/lib/ldap/DB_CONFIG
 sudo chown ldap:ldap -R /var/lib/ldap
 sudo chmod 700 -R /var/lib/ldap
 ```
 
-9. 创建Ldap用户
+8. 创建Ldap用户
 ```
 ##设置用户密码
 slappasswd
 {SSHA}ZBe7cAFfSv/63uKUuFIgdVRtLLQkFx4o
 123456
 
+##创建LDAP用户
 vim users.ldif
 >> 
-dn: uid=hive,ou=tech,dc=bnb,dc=internal
+dn: uid=hive,dc=ap-northeast-1,dc=compute,dc=internal
 sn: hive
 cn: hive
 objectClass: inetOrgPerson
-userPassword: *******
+userPassword: {SSHA}TiONe309UkyVzfrNslYxtjY1mJv5f7fC
 uid: hive
 
-dn: uid=presto,ou=tech,dc=bnb,dc=internal
+dn: uid=presto,dc=ap-northeast-1,dc=compute,dc=internal
 sn: presto
 cn: presto
 objectClass: inetOrgPerson
-userPassword: *******
+userPassword: {SSHA}TiONe309UkyVzfrNslYxtjY1mJv5f7fC
 uid: presto
 
-dn: uid=hue,ou=tech,dc=bnb,dc=internal
+dn: uid=presto,dc=ap-northeast-1,dc=compute,dc=internal
 sn: hue
 cn: hue
 objectClass: inetOrgPerson
-userPassword: *******
+userPassword: {SSHA}TiONe309UkyVzfrNslYxtjY1mJv5f7fC
 uid: hue
 
-dn: uid=atlas,ou=tech,dc=bnb,dc=internal
-sn: atlas
-cn: atlas
-objectClass: inetOrgPerson
-userPassword: *******
-uid: atlas
-
-dn: uid=ranger,ou=tech,dc=bnb,dc=internal
-sn: ranger
-cn: ranger
-objectClass: inetOrgPerson
-userPassword: *******
-uid: ranger
-
-dn: uid=atlasadmin,ou=tech,dc=bnb,dc=internal
-sn: atlasadmin
-cn: atlasadmin
-objectClass: inetOrgPerson
-userPassword: *******
-uid: atlasadmin
-
-dn: uid=hiveadmin,ou=tech,dc=bnb,dc=internal
-sn: hiveadmin
-cn: hiveadmin
-objectClass: inetOrgPerson
-userPassword: *******
-uid: hiveadmin
-
-dn: uid=prestoadmin,ou=tech,dc=bnb,dc=internal
-sn: prestoadmin
-cn: prestoadmin
-objectClass: inetOrgPerson
-userPassword: *******
-uid: prestoadmin
-
-sudo ldapadd -D "cn=bdpadmin,dc=bnb,dc=internal" -W -f users.ldif
+##应用LDAP用户配置
+sudo ldapadd -D "cn=rangeradmin,dc=ap-northeast-1,dc=compute,dc=internal" -W -f users.ldif
 ```
 
-10. 验证LDAP服务
+9. 验证LDAP服务
 ```
 sudo slaptest -u
 config file testing succeeded #验证成功，否则失败
 ```
-11. 测试User LDAP 连接
+10. 测试User LDAP 连接
 ```
-##bdpadmin
-cn=bdpadmin,dc=bnb,dc=internal
-password=1qazxsw2
-ldapsearch -x -b dc=bnb,dc=internal -H ldap://127.0.0.1 -D cn=bdpadmin,dc=bnb,dc=internal -W
+ldapsearch -x -b dc=ap-northeast-1,dc=compute,dc=internal -H ldap://ip-172-31-36-146.ap-northeast-1.compute.internal -D cn=rangeradmin,dc=ap-northeast-1,dc=compute,dc=internal -W
 
-##ranger
-uid=ranger,ou=tech,dc=bnb,dc=internal
-password=123456
-[ec2-user@ip-172-31-46-68 ~]$ ldapwhoami -x -D uid=ranger,ou=tech,dc=bnb,dc=internal -H ldap://127.0.0.1 -W
-Enter LDAP Password:
-dn:uid=ranger,ou=tech,dc=bnb,dc=internal
+ldapwhoami -x -D uid=hive,dc=ap-northeast-1,dc=compute,dc=internal -H ldap://ip-172-31-36-146.ap-northeast-1.compute.internal -W
+
+ldapwhoami -x -w "123456" -D uid=presto,dc=ap-northeast-1,dc=compute,dc=internal -H ldap://ip-172-31-36-146.ap-northeast-1.compute.internal
 
 ```
 
-12. 限制anonymous登录
+11. 限制anonymous登录
 ```
 # Disable anonymous access
 vim ldap_disable_bind_anon.ldif
@@ -263,6 +217,150 @@ sudo ldapadd -Y EXTERNAL -H ldapi:/// -f ldap_disable_bind_anon.ldif
 [ec2-user@ip-172-31-46-68 ~]$ ldapsearch -x -LLL -b ldap://127.0.0.1
 ldap_bind: Inappropriate authentication (48)
 	additional info: anonymous bind disallowed
+```
+
+12. LDAPS 配置
+
+12.1. 为LDAPS创建CA key和CA证书
+
+```
+# Create certificates
+ls -l /etc/pki/CA/
+cd /etc/pki/CA
+echo 0001 > serial
+touch index.txt
+
+## 生成CA private key
+openssl genrsa -aes256 -out /etc/pki/CA/private/ca.key.pem    ***changeit***
+
+## 生成CA Certiricate
+openssl req -new -x509 -days 3650 -key /etc/pki/CA/private/ca.key.pem -extensions v3_ca -out /etc/pki/CA/certs/ca.cert.pem
+	# Country Name (2 letter code) [XX]:CN
+	# State or Province Name (full name) []:SH
+	# Locality Name (eg, city) [Default City]:SH
+	# Organization Name (eg, company) [Default Company Ltd]:Ranger
+	# Organizational Unit Name (eg, section) []:Test
+	# Common Name (eg, your name or your server's hostname) []:ip-172-31-36-146.ap-northeast-1.compute.internal
+	# Email Address []:hxh@amazon.com
+
+```
+
+12.2. 为LDAPS创建Server CSR，并使用CA证书签发Server证书
+
+** ！！注意LDAP server证书的CN，要和客户端在连接LDAPS认证时指定的LDAPS URL对应，一般使用LDAP server可解析的主机名，或者使用通配符证书（未验证），否则会出现证书不匹配的错误，导致LDAPS连接失败** 
+```
+cd /etc/pki/CA/
+##创建LDAP server private key
+openssl genrsa -out private/ldap.key
+
+##创建LDAP server CSR
+openssl req -new -key private/ldap.key -out certs/ldap.csr  -days 3650
+	# Country Name (2 letter code) [XX]:CN
+	# State or Province Name (full name) []:SH
+	# Locality Name (eg, city) [Default City]:SH
+	# Organization Name (eg, company) [Default Company Ltd]:Ranger
+	# Organizational Unit Name (eg, section) []:Test
+	# Common Name (eg, your name or your server's hostname) []:ip-172-31-36-146.ap-northeast-1.compute.internal
+	# Email Address []:hxh@amazon.com
+
+##使用CA证书，根据CSR签发server证书
+openssl ca -keyfile private/ca.key.pem -cert certs/ca.cert.pem -in certs/ldap.csr -out certs/ldap.crt -days 3650
+cat index.txt
+##创建LDAP server CSR
+openssl verify -CAfile certs/ca.cert.pem certs/ldap.crt
+```
+
+12.3. 将CA证书和Server证书复制到LDAP证书目录
+
+```
+cp -v certs/* /etc/openldap/certs/
+cp -v private/ldap.key /etc/openldap/certs/
+mkdir /etc/openldap/cacerts/
+cp -v certs/ca.cert.pem /etc/openldap/cacerts/
+chown -R ldap. /etc/openldap/certs/
+chown -R ldap. /etc/openldap/cacerts/
+ll /etc/openldap/cacerts/
+ll /etc/openldap/certs/
+```
+
+12.4. 修改LDAP TLS配置
+
+```
+# Config ldap tls 
+slapcat -b "cn=config" | egrep "olcTLSCertificateFile|olcTLSCertificateKeyFile"
+
+vim /tmp/certs.ldif
+>> 
+dn: cn=config
+changetype: modify
+replace: olcTLSCertificateFile
+olcTLSCertificateFile: /etc/openldap/certs/ldap.crt
+-
+replace: olcTLSCertificateKeyFile
+olcTLSCertificateKeyFile: /etc/openldap/certs/ldap.key
+
+##应用配置
+sudo ldapmodify -Y EXTERNAL -H ldapi:/// -f /tmp/certs.ldif
+sudo slapcat -b "cn=config" | egrep "olcTLSCertificateFile|olcTLSCertificateKeyFile"
+
+
+vim /tmp/ca.ldif
+>> 
+dn: cn=config
+changetype: modify
+add: olcTLSCACertificateFile
+olcTLSCACertificateFile: /etc/openldap/cacerts/ca.cert.pem
+
+##应用配置
+sudo ldapmodify -Y EXTERNAL -H ldapi:/// -f /tmp/ca.ldif
+sudo slapcat -b "cn=config" | egrep "olcTLSCertificateFile|olcTLSCertificateKeyFile|olcTLSCACertificateFile"
+
+sudo slaptest -u
+```
+
+12.5. 启用LDAPS，并重启服务
+
+```
+# Enable ldaps
+vim /etc/sysconfig/slapd
+>>
+SLAPD_URLS="ldapi:/// ldap:/// ldaps:///"
+
+service slapd restart
+service slapd status
+
+# Verify ldaps
+# ldapsearch -Y EXTERNAL -H ldapi:/// -b cn=config | grep olcTLS
+netstat -antupl | grep 636
+netstat -antupl | grep 389
+```
+
+12.6. 验证LDAPS连接
+
+```
+##Test LDAPS connection
+ldapsearch -x -b dc=ap-northeast-1,dc=compute,dc=internal -H ldaps://ip-172-31-36-146.ap-northeast-1.compute.internal -D cn=rangeradmin,dc=ap-northeast-1,dc=compute,dc=internal -W
+
+ldapwhoami -x -D uid=hive,dc=ap-northeast-1,dc=compute,dc=internal -H ldaps://ip-172-31-36-146.ap-northeast-1.compute.internal -W
+
+## ！！注意：需要将LDAP server的CA证书和LDAP server证书，复制到LDAP client所在的机器
+## 需要在LDAP client的配置文件/etc/openldap/ldap.conf中，指定LDAP server的CA证书路径，将LDAP server的CA证书复制到下面路径
+##/etc/openldap/ldap.conf
+TLS_CACERTDIR   /etc/openldap/certs
+
+##或者通过环境变量指定LDAP server的CA证书和LDAP证书
+export LDAPTLS_CACERT=/path/ca.cert.pem
+export LDAPTLS_CERT=/path/ldap.crt
+
+##如果以下错误，则基本上是证书问题，LDAP client上的LDAP CA证书和LDAP证书的路径没配置正确
+ldap_sasl_bind(SIMPLE): Can't contact LDAP server (-1)
+
+ldap_sasl_interactive_bind_s: Can't contact LDAP server (-1)
+	additional info: error:14090086:SSL routines:ssl3_get_server_certificate:certificate verify failed (self signed certificate in certificate chain)
+
+ldap_sasl_interactive_bind_s: Can't contact LDAP server (-1)
+    additional info: TLS error -8172:Peer's certificate issuer has been marked as not trusted by the user.
+
 ```
 
 ## 二. Build Ranger安装包
@@ -457,14 +555,14 @@ sudo su
 hostip=`hostname -I | xargs`
 installpath=/usr/lib/ranger
 mysql_jar=mysql-connector-java-5.1.39.jar
-ranger_admin=ranger-2.0.0-admin
-ranger_user_sync=ranger-2.0.0-usersync
-ldap_domain=bnb.internal 
-ldap_server_url=ldap://172.31.46.68:389
-ldap_base_dn=ou=tech,dc=bnb,dc=internal
-ldap_bind_user_dn=uid=ranger,ou=tech,dc=bnb,dc=internal
+ranger_admin=ranger-2.1.0-admin
+ranger_user_sync=ranger-2.1.0-usersync
+ldap_domain=ap-northeast-1.compute.internal      
+ldap_server_url=ldap://ip-172-31-36-146.ap-northeast-1.compute.internal:389 
+ldap_base_dn=dc=ap-northeast-1,dc=compute,dc=internal
+ldap_bind_user_dn=uid=hive,dc=ap-northeast-1,dc=compute,dc=internal 
 ldap_bind_password=123456
-ranger_s3bucket=https://hxh-tokyo.s3-ap-northeast-1.amazonaws.com/ranger/
+ranger_s3bucket=https://hxh-tokyo.s3-ap-northeast-1.amazonaws.com/ranger
 ```
 
 2. 安装
@@ -474,7 +572,7 @@ cd $installpath
 
 wget $ranger_s3bucket/$ranger_admin_server.tar.gz
 wget $ranger_s3bucket/$ranger_user_sync.tar.gz
-wget $ranger_s3bucket/$mysql_jar_location
+wget $ranger_s3bucket/$mysql_jar
 wget $ranger_s3bucket/solr_for_audit_setup.tar.gz
 
 #Install mySQL
@@ -599,13 +697,163 @@ sudo /opt/solr/ranger_audit_server/scripts/start_solr.sh
 ## 四. 启动EMR集群
 
 启动EMR集群，选择Advanced Option
-- 选择EMR 5.30版本，Hadoop，Hive，Hue，Spark，Presto
+- 选择EMR 5.30.1版本，Hadoop，Hive，Hue，Spark，Presto
 - 使用Glue作为Hive，Presto和Spark的Metadata
 - 指定EMR Launch Configuration，包括Hue的LDAP配置，External Database，以及Metastore的配置
+- 在Launch Configuration中添加Hive和Presto使用LDAP认证的配置
 ![Launch EMR](./pics/EMR-application.png)
 
-- 为EMR集群指定EC2 Key Pair，另外Presto如果使用用户名和密码认证，则要求使用https，所以需要在Security Configuration中指定证书（Security Configuration需要提前配置，具体参考官方文档）
-![EMR Security](./pics/EMR-security.png)
+- 为EMR集群指定EC2 Key Pair
+- Presto如果启用用户名密码认证（例如LDAP），则Presto节点之间通信需要使用HTTPS，所以需要提前生成证书，加载到集群中。
+ 1. 生成证书，用于EMR in-transit encryption
+```
+## self-generate 证书，用于EMR in-transit encryption，在EMR security configuration里配置
+## EMR presto使用用户名密码，必须使用https
+openssl req -x509 -newkey rsa:1024 -keyout privateKey.pem -out certificateChain.pem -days 365 -nodes -subj '/C=CN/ST=SH/L=SH/O=AWS/OU=AWS/CN=*.ap-northeast-1.compute.internal'
+cp certificateChain.pem trustedCertificates.pem
+##将生成的证书打包，上传到S3
+zip -r -X emr-certs-new.zip certificateChain.pem privateKey.pem trustedCertificates.pem
+```
+ 2. 在EMR中，提前创建Security Configuration，选择之前打包上传到S3的证书文件
+
+![SecurityConfiguration](./pics/SecurityConfiguration.png)
+
+ 3. 在启动EMR集群时，选择创建的Security Configuration
+ ![EMR Security](./pics/EMR-security.png)
+
+
+EMR集群启动参考配置如下，包括：
+ - Hive LDAP
+ - Presto LDAP
+ - Hue LDAP
+ - Hive使用Glue作为metastore
+ - Presto使用Hive metastore
+ - Spark使用Hive etastore
+ - 当启动类型为Multi master时（单Master集群也适用，不强制），要求Hue使用外部数据库，这里使用RDS
+ - 当启动类型为Multi master时（单Master集群也适用，不强制），Multi master要求启用Ozzie，并使用外部数据库，这里使用RDS
+
+```
+[
+  {
+    "Classification": "presto-config",
+    "Properties": {
+      "http-server.authentication.type": "PASSWORD"
+    }
+  },
+  {
+    "Classification": "presto-password-authenticator",
+    "Properties": {
+      "password-authenticator.name": "ldap",
+      "ldap.url": "ldaps://ip-172-31-36-146.ap-northeast-1.compute.internal:636",
+      "ldap.user-bind-pattern": "uid=${USER},dc=ap-northeast-1,dc=compute,dc=internal",
+      "internal-communication.authentication.ldap.user": "presto",
+      "internal-communication.authentication.ldap.password": "123456"
+    }
+  },
+  {
+    "Classification": "oozie-site",
+    "Properties": {
+      "oozie.service.JPAService.jdbc.driver": "com.mysql.jdbc.Driver",
+      "oozie.service.JPAService.jdbc.url": "jdbc:mysql://database-1.cluqkc7jqkna.ap-northeast-1.rds.amazonaws.com:3306/oozie",
+      "oozie.service.JPAService.jdbc.username": "admin",
+      "oozie.service.JPAService.jdbc.password": "1qazxsw2"
+    },
+    "Configurations": []
+  },
+  {
+    "Classification": "spark-hive-site",
+    "Properties": {
+      "hive.metastore.client.factory.class": "com.amazonaws.glue.catalog.metastore.AWSGlueDataCatalogHiveClientFactory"
+    }
+  },
+  {
+    "Classification": "presto-connector-hive",
+    "Properties": {
+      "hive.metastore": "glue"
+    }
+  },
+  {
+    "Classification": "hive-site",
+    "Properties": {
+      "hive.metastore.client.factory.class": "com.amazonaws.glue.catalog.metastore.AWSGlueDataCatalogHiveClientFactory",
+      "hive.server2.authentication": "LDAP",
+      "hive.server2.authentication.ldap.url": "ldap://ip-172-31-36-146.ap-northeast-1.compute.internal:389",
+      "hive.server2.authentication.ldap.baseDN": "dc=ap-northeast-1,dc=compute,dc=internal"
+    }
+  },
+  {
+    "Classification": "hue-ini",
+    "Properties": {},
+    "Configurations": [
+      {
+        "Classification": "desktop",
+        "Properties": {},
+        "Configurations": [
+          {
+            "Classification": "database",
+            "Properties": {
+              "name": "hue",
+              "user": "admin",
+              "password": "1qazxsw2",
+              "host": "database-1.cluqkc7jqkna.ap-northeast-1.rds.amazonaws.com",
+              "port": "3306",
+              "engine": "mysql"
+            },
+            "Configurations": []
+          },
+          {
+            "Classification": "ldap",
+            "Properties": {},
+            "Configurations": [
+              {
+                "Classification": "ldap_servers",
+                "Properties": {},
+                "Configurations": [
+                  {
+                    "Classification": "ldap-hue",
+                    "Properties": {
+                      "base_dn": "dc=ap-northeast-1,dc=compute,dc=internal",
+                      "ldap_url": "ldap://ip-172-31-36-146.ap-northeast-1.compute.internal",
+                      "search_bind_authentication": "false",
+                      "ldap_username_pattern": "uid=<username>,dc=ap-northeast-1,dc=compute,dc=internal",
+                      "bind_dn": "uid=hive,dc=ap-northeast-1,dc=compute,dc=internal",
+                      "bind_password": "123456"
+                    },
+                    "Configurations": [
+                      {
+                        "classification": "groups",
+                        "properties": {
+                          "group_filter": "objectclass=groupOfNames",
+                          "group_name_attr": "cn"
+                        },
+                        "configurations": []
+                      },
+                      {
+                        "classification": "users",
+                        "properties": {
+                          "user_name_attr": "uid",
+                          "user_filter": "objectclass=inetOrgPerson"
+                        },
+                        "configurations": []
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "Classification": "auth",
+            "Properties": {
+              "backend": "desktop.auth.backend.LdapBackend"
+            }
+          }
+        ]
+      }
+    ]
+  }
+]
+```
 
 ## 五. 为EMR Master安装Ranger Plugin
 
@@ -928,7 +1176,7 @@ fi;
 
 exit 0
 
-  ```
+```
 
 对于Multi Master的EMR集群，如果某台Master节点发生故障，则EMR服务会重启启动一台Master，新的Master保留原有Master的Hostname，IP地址以及EMR application。
 
@@ -937,3 +1185,235 @@ exit 0
 同时，Bootstrap脚本也会在新Master启动的时候运行，重新安装Ranger Plugin。
 
 ![Master Failure](./pics/Master-failure.png)
+
+
+## 九. 为Hive启用LDAP认证
+
+Hive启用LDAP，需要在hive-site.xml配置文件中，添加LDAP相关配置。
+
+可以通过在启用EMR集群的时候，在Launch Configuration中添加Hive LDAP的配置项，该配置会自动添加到hive-site.xml中
+
+```
+  {
+    "Classification": "hive-site",
+    "Properties": {
+      "hive.metastore.client.factory.class": "com.amazonaws.glue.catalog.metastore.AWSGlueDataCatalogHiveClientFactory",
+      "hive.server2.authentication": "LDAP",
+      "hive.server2.authentication.ldap.url": "ldap://ip-172-31-36-146.ap-northeast-1.compute.internal:389",
+      "hive.server2.authentication.ldap.baseDN": "dc=ap-northeast-1,dc=compute,dc=internal"
+    }
+  }
+```
+**验证Hive LDAP认证**
+
+```
+[hadoop@ip-172-31-46-190 ~]$ beeline -u jdbc:hive2://ip-172-31-46-190.ap-northeast-1.compute.internal:10000/default -n presto -p 123456
+Connecting to jdbc:hive2://ip-172-31-46-190.ap-northeast-1.compute.internal:10000/default
+Connected to: Apache Hive (version 2.3.6-amzn-2)
+Driver: Hive JDBC (version 2.3.6-amzn-2)
+Transaction isolation: TRANSACTION_REPEATABLE_READ
+Beeline version 2.3.6-amzn-2 by Apache Hive
+0: jdbc:hive2://ip-172-31-46-190.ap-northeast> show tables;
+INFO  : Compiling command(queryId=hive_20201106082332_9b859422-e4a1-4f0e-8a19-44b923b22f45): show tables
+INFO  : Semantic Analysis Completed
+INFO  : Returning Hive schema: Schema(fieldSchemas:[FieldSchema(name:tab_name, type:string, comment:from deserializer)], properties:null)
+INFO  : Completed compiling command(queryId=hive_20201106082332_9b859422-e4a1-4f0e-8a19-44b923b22f45); Time taken: 1.175 seconds
+INFO  : Concurrency mode is disabled, not creating a lock manager
+INFO  : Executing command(queryId=hive_20201106082332_9b859422-e4a1-4f0e-8a19-44b923b22f45): show tables
+INFO  : Starting task [Stage-0:DDL] in serial mode
+INFO  : Completed executing command(queryId=hive_20201106082332_9b859422-e4a1-4f0e-8a19-44b923b22f45); Time taken: 0.244 seconds
+INFO  : OK
++------------------+
+|     tab_name     |
++------------------+
+| cloudfront_logs  |
++------------------+
+1 row selected (1.8 seconds)
+
+
+###如果用户名或密码错误，则无法连接Hive
+[hadoop@ip-172-31-46-190 ~]$ beeline -u jdbc:hive2://ip-172-31-46-190.ap-northeast-1.compute.internal:10000/default -n presto -p 123
+Connecting to jdbc:hive2://ip-172-31-46-190.ap-northeast-1.compute.internal:10000/default
+20/11/06 09:39:57 [main]: WARN jdbc.HiveConnection: Failed to connect to ip-172-31-46-190.ap-northeast-1.compute.internal:10000
+Unknown HS2 problem when communicating with Thrift server.
+Error: Could not open client transport with JDBC Uri: jdbc:hive2://ip-172-31-46-190.ap-northeast-1.compute.internal:10000/default: Peer indicated failure: Error validating the login (state=08S01,code=0)
+Beeline version 2.3.6-amzn-2 by Apache Hive
+```
+LDAP认证成功后，会根据Ranger上对应用户的授权策略，获取相应的权限。
+
+十. 为Presto启用LDAP认证
+
+Presto启用LDAP认证，需要在Presto配置文件中，添加LDAP相关配置。
+
+可以通过启动EMR时的Launch Configuration添加。
+```
+  {
+    "Classification": "presto-config",
+    "Properties": {
+      "http-server.authentication.type": "PASSWORD"
+    }
+  },
+  {
+    "Classification": "presto-password-authenticator",
+    "Properties": {
+      "password-authenticator.name": "ldap",
+      "ldap.url": "ldaps://ip-172-31-36-146.ap-northeast-1.compute.internal:636",
+      "ldap.user-bind-pattern": "uid=${USER},dc=ap-northeast-1,dc=compute,dc=internal",
+      "internal-communication.authentication.ldap.user": "presto",
+      "internal-communication.authentication.ldap.password": "123456"
+    }
+  }
+```
+
+另外Presto LDAP认证，只支持LDAPS，所以需要将LDAP server的证书导入到EMR集群中，作为LDAP over TLS的证书。
+
+通过Bootstrap的方式，将证书下载集中节点，并导入到JAVA的信任证书中.
+```
+##Download-import-LDAP-cert.sh
+
+##Download LDAP server certificate and import it to all EMR nodes
+
+aws s3 cp s3://hxh-tokyo/ranger/ldap.crt .
+
+sudo keytool -import -keystore /usr/lib/jvm/jre/lib/security/cacerts -trustcacerts -alias ldap_server -file ./ldap.crt -storepass changeit -noprompt
+
+```
+![LDAP Certificate](./pics/Download-import-LDAP-Cert.png)
+
+**验证Presto LDAP认证**
+
+Presto的配置文件位于/etc/presto/conf/config.properties，可以查看Presto Server的URL，端口号（默认8446）等信息
+```
+[hadoop@ip-172-31-46-190 ~]$ more /etc/presto/conf/config.properties
+coordinator=false
+node-scheduler.include-coordinator=false
+discovery.uri=https://ip-172-31-37-239.ap-northeast-1.compute.internal:8446
+http-server.threads.max=500
+sink.max-buffer-size=1GB
+query.max-memory=4915MB
+query.max-memory-per-node=6532645258B
+query.max-total-memory-per-node=7839174309B
+query.max-history=40
+query.min-expire-age=30m
+query.client.timeout=30m
+query.stage-count-warning-threshold=100
+query.max-stage-count=150
+http-server.http.port=8889
+http-server.log.path=/var/log/presto/http-request.log
+http-server.log.max-size=67108864B
+http-server.log.max-history=5
+log.max-size=268435456B
+log.max-history=5
+internal-communication.authentication.ldap.user=presto
+internal-communication.authentication.ldap.password=123456
+graceful-shutdown-timeout = 0s
+internal-communication.https.keystore.key = bWnuhKTNv0
+node.internal-address = ip-172-31-46-190.ap-northeast-1.compute.internal
+http-server.https.enabled = true
+internal-communication.https.keystore.path = /usr/share/aws/emr/security/conf/truststore.jks
+http-server.https.port = 8446
+http-server.authentication.type = PASSWORD
+internal-communication.https.required = true
+http-server.http.enabled =
+http-server.https.keystore.path = /usr/share/aws/emr/security/conf/keystore.jks
+http-server.https.keystore.key = 6E8PSYjNk7
+http-server.https.keymanager.password = yZFA0rgEXA
+```
+
+另外通过HTTPS连接Presto，还需要指定trustsore证书路径和密钥，
+位于/etc/hadoop/conf/ssl-client.xml文件中
+```
+[hadoop@ip-172-31-46-190 ~]$ more /etc/hadoop/conf/ssl-client.xml
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+<!--
+   Licensed to the Apache Software Foundation (ASF) under one or more
+   contributor license agreements.  See the NOTICE file distributed with
+   this work for additional information regarding copyright ownership.
+   The ASF licenses this file to You under the Apache License, Version 2.0
+   (the "License"); you may not use this file except in compliance with
+   the License.  You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+-->
+<configuration>
+
+  <property>
+    <name>ssl.client.keystore.keypassword</name>
+    <value>yZFA0rgEXA</value>
+  </property>
+
+  <property>
+    <name>ssl.client.truststore.reload.interval</name>
+    <value>10000</value>
+  </property>
+
+  <property>
+    <name>ssl.client.keystore.location</name>
+    <value>/usr/share/aws/emr/security/conf/keystore.jks</value>
+  </property>
+
+  <property>
+    <name>ssl.client.truststore.password</name>
+    <value>bWnuhKTNv0</value>
+  </property>
+
+  <property>
+    <name>ssl.client.truststore.type</name>
+    <value>jks</value>
+  </property>
+
+  <property>
+    <name>ssl.client.truststore.location</name>
+    <value>/usr/share/aws/emr/security/conf/truststore.jks</value>
+  </property>
+
+  <property>
+    <name>ssl.client.keystore.password</name>
+    <value>6E8PSYjNk7</value>
+  </property>
+
+  <property>
+    <name>ssl.client.keystore.type</name>
+    <value>jks</value>
+  </property>
+</configuration>
+```
+
+验证连接
+```
+[hadoop@ip-172-31-46-190 ~]$ presto-cli --server https://ip-172-31-37-239.ap-northeast-1.compute.internal:8446 --truststore-path /usr/share/aws/emr/security/conf/truststore.jks --truststore-password bWnuhKTNv0 --user presto --password
+Password:
+presto> show catalogs;
+    Catalog
+----------------
+ awsdatacatalog
+ hive
+ system
+(3 rows)
+
+Query 20201106_094310_00003_mhbf2, FINISHED, 1 node
+Splits: 19 total, 19 done (100.00%)
+0:00 [0 rows, 0B] [0 rows/s, 0B/s]
+
+##如果用户名或密码错误，则会提示认证失败
+[hadoop@ip-172-31-46-190 ~]$ presto-cli --server https://ip-172-31-37-239.ap-northeast-1.compute.internal:8446 --truststore-path /usr/share/aws/emr/security/conf/truststore.jks --truststore-password bWnuhKTNv0 --user presto --password
+Password:
+presto> show catalogs;
+Error running command: Error starting query at https://ip-172-31-37-239.ap-northeast-1.compute.internal:8446/v1/statement returned an invalid response: JsonResponse{statusCode=500, statusMessage=Server Error, headers={cache-control=[must-revalidate,no-cache,no-store], connection=[close], content-length=[14050], content-type=[text/html;charset=iso-8859-1]}, hasValue=false} [Error: <html>
+<head>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8"/>
+<title>Error 500 Server Error</title>
+</head>
+<body><h2>HTTP ERROR 500</h2>
+<p>Problem accessing /v1/statement. Reason:
+<pre>    Server Error</pre></p><h3>Caused by:</h3><pre>java.lang.RuntimeException: Authentication error
+	at com.facebook.presto.server.security.PasswordAuthenticator.authenticate(PasswordAuthenticator.java:71)
+```
+LDAP认证成功后，会根据Ranger上对应用户的授权策略，获取相应的权限。
