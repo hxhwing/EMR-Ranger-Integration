@@ -20,5 +20,5 @@ Amazon EMR 是行业领先的云大数据平台，可使用多种开放源代码
 | ----------- 				| -----------    | -----------    | -----------    	    |
 | [EMR 5.x + Apache Ranger](./Ranger2.X-EMR5.X)   | Ranger 2.0/2.1 | EMR 5.30+      | Hive2, Prestodb, Hue	 |
 | [EMR 6.x + Apache Ranger](./Ranger2.X-EMR6.X)  	| Ranger 2.1.1   | EMR 6.1+      | Hive3, PrestoSQL, Hue   |
-| [EMR 5.x Managed Ranger](https://github.com/hxhwing/EMR-Managed-Ranger-Plugin) 	| Ranger 2.1   | EMR 6.1+      | Hive2, Spark, S3   	  |
+| [EMR 5.x Managed Ranger](https://github.com/hxhwing/EMR-Managed-Ranger-Plugin) 	| Ranger 2.1   | EMR 6.1+      | Hive2, Spark, S3 , Hue, Zeppelin|
 
