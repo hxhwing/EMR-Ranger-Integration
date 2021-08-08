@@ -1,0 +1,101 @@
+[
+  {
+    "Classification": "oozie-site",
+    "Properties": {
+      "oozie.service.JPAService.jdbc.driver": "com.mysql.jdbc.Driver",
+      "oozie.service.JPAService.jdbc.url": "jdbc:mysql://database-1.cluqkc7jqkna.ap-northeast-1.rds.amazonaws.com:3306/oozie",
+      "oozie.service.JPAService.jdbc.username": "admin",
+      "oozie.service.JPAService.jdbc.password": "1qazxsw2"
+    },
+    "Configurations": []
+  },
+  {
+    "Classification": "spark-hive-site",
+    "Properties": {
+      "hive.metastore.client.factory.class": "com.amazonaws.glue.catalog.metastore.AWSGlueDataCatalogHiveClientFactory"
+    }
+  },
+  {
+    "Classification": "presto-connector-hive",
+    "Properties": {
+      "hive.metastore": "glue"
+    }
+  },
+  {
+    "Classification": "hive-site",
+    "Properties": {
+      "hive.metastore.client.factory.class": "com.amazonaws.glue.catalog.metastore.AWSGlueDataCatalogHiveClientFactory"
+    }
+  },
+  {
+    "Classification": "hue-ini",
+    "Properties": {},
+    "Configurations": [
+      {
+        "Classification": "desktop",
+        "Properties": {},
+        "Configurations": [
+          {
+            "Classification": "database",
+            "Properties": {
+              "name": "hue",
+              "user": "admin",
+              "password": "1qazxsw2",
+              "host": "database-1.cluqkc7jqkna.ap-northeast-1.rds.amazonaws.com",
+              "port": "3306",
+              "engine": "mysql"
+            },
+            "Configurations": []
+          },
+          {
+            "Classification": "ldap",
+            "Properties": {},
+            "Configurations": [
+              {
+                "Classification": "ldap_servers",
+                "Properties": {},
+                "Configurations": [
+                  {
+                    "Classification": "ldap-hue",
+                    "Properties": {
+                      "base_dn": "ou=tech,dc=bnb,dc=internal",
+                      "ldap_url": "ldap://172.31.46.68",
+                      "search_bind_authentication": "false",
+                      "ldap_username_pattern": "uid=<username>,ou=tech,dc=bnb,dc=internal",
+                      "bind_dn": "uid=hue,ou=tech,dc=bnb,dc=internal",
+                      "bind_password": "123456"
+                    },
+                    "Configurations": [
+                                          {
+                        "classification": "groups",
+                        "properties": {
+                          "group_filter": "objectclass=groupOfNames",
+                          "group_name_attr": "cn"
+                        },
+                        "configurations": []
+                      },
+                      {
+                        "classification": "users",
+                        "properties": {
+                          "user_name_attr": "uid",
+                          "user_filter": "objectclass=inetOrgPerson"
+                        },
+                        "configurations": []
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "Classification": "auth",
+            "Properties": {
+              "backend": "desktop.auth.backend.LdapBackend"
+            }
+          }
+        ]
+      }
+    ]
+  }
+]
