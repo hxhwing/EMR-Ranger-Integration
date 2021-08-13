@@ -16,9 +16,14 @@ Amazon EMR 是行业领先的云大数据平台，可使用多种开放源代码
 
 具体内容分为：
 
-| Index       				| Ranger Version | EMR Version 	| Supported Application |
-| ----------- 				| -----------    | -----------    | -----------    	    |
-| [EMR 5.x + Apache Ranger](./Ranger2.X-EMR5.X)   | Ranger 2.0/2.1 | EMR 5.30+      | Hive2, Prestodb, Hue	 |
-| [EMR 6.x + Apache Ranger](./Ranger2.X-EMR6.X)  	| Ranger 2.1.1   | EMR 6.1+      | Hive3, PrestoSQL, Hue   |
-| [EMR 5.x Managed Ranger](https://github.com/hxhwing/EMR-Managed-Ranger-Plugin) 	| Ranger 2.1   | EMR 5.31+      | Hive2, Spark, S3 , Hue, Zeppelin|
+| Index       				| Ranger Version | EMR Version 	  | Supported Application |	Authentication	|
+| ----------- 				| -----------    | -----------    | -----------    	    |	-----------    	|
+| [EMR 5.x + Apache Ranger](./Ranger2.X-EMR5.X)   | Ranger 2.0/2.1 | EMR 5.30+      | Hive2, Prestodb, Hue	 |	LDAP(hive/hue), LDAPS(prestodb) |
+| [EMR 6.x + Apache Ranger](./Ranger2.X-EMR6.X)  	| Ranger 2.1.1   | EMR 6.1+      | Hive3, PrestoSQL, Hue   |	LDAP(hive/hue), LDAPS(prestoSQL) |
+| [EMR 5.x Managed Ranger](https://github.com/hxhwing/EMR-Managed-Ranger-Plugin) 	| Ranger 2.1   | EMR 5.31+      | Hive2, Spark, S3 , Hue, Zeppelin|	LDAP(hive/hue/zeppelin/spark), Kerberos(all) |
+
+
+## License
+---
+This project is licensed under the Apache-2.0 License.
 

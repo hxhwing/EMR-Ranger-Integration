@@ -72,13 +72,15 @@ sudo ln -s /usr/lib/presto/plugin/ranger/ranger-presto-plugin-impl/conf /usr/lib
 sudo ln -s /etc/hive/conf.dist/ranger-hive-security.xml /usr/lib/presto/plugin/ranger/conf/ranger-hive-security.xml || true
 sudo ln -s /etc/hive/conf.dist/ranger-hive-audit.xml /usr/lib/presto/plugin/ranger/conf/ranger-hive-audit.xml || true
 
-sudo puppet apply -e 'service { "presto-server": ensure => false, }'
-sudo puppet apply -e 'service { "presto-server": ensure => true, }'
+# sudo puppet apply -e 'service { "presto-server": ensure => false, }'
+# sudo puppet apply -e 'service { "presto-server": ensure => true, }'
 
-sudo service presto-server restart
+sudo service presto-server stop
+sudo service presto-server start
 
 # sudo sed -i "s|PrestoDriver\", \"user\":\"root\",\"password\":\"\"|PrestoDriver\", \"user\":\"\", \"password\":\"\"|g" /etc/hue/conf.empty/hue.ini
-sudo puppet apply -e 'service { "hue": ensure => false, }'
-sudo puppet apply -e 'service { "hue": ensure => true, }'
+# sudo puppet apply -e 'service { "hue": ensure => false, }'
+# sudo puppet apply -e 'service { "hue": ensure => true, }'
 
-sudo service hue restart
+sudo service hue stop
+sudo service hue start

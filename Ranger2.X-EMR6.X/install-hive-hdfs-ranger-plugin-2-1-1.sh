@@ -95,7 +95,7 @@ sudo cp $installpath/$ranger_hive_plugin/lib/ranger-hive-plugin-impl/*.jar /usr/
 #Restart Namenode
 # sudo puppet apply -e 'service { "hadoop-hdfs-namenode": ensure => false, }'
 # sudo puppet apply -e 'service { "hadoop-hdfs-namenode": ensure => true, }'
-sudo service hadoop-hdfs-namenode stop
+# sudo service hadoop-hdfs-namenode stop
 sudo service hadoop-hdfs-namenode start
 #Restart HiveServer2
 # sudo puppet apply -e 'service { "hive-server2": ensure => false, }'
