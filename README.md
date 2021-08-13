@@ -24,6 +24,6 @@ Amazon EMR 是行业领先的云大数据平台，可使用多种开放源代码
 
 
 ## License
----
+
 This project is licensed under the Apache-2.0 License.
 
