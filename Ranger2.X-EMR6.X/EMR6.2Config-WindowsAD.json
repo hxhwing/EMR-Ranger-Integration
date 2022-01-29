@@ -1,0 +1,129 @@
+[
+  {
+    "Classification": "prestosql-config",
+    "Properties": {
+      "http-server.authentication.type": "PASSWORD"
+    }
+  },
+  {
+    "Classification": "prestosql-password-authenticator",
+    "Properties": {
+      "password-authenticator.name": "ldap",
+      "ldap.url": "ldaps://EC2AMAZ-IU0GKU9.test.local:636",
+      "ldap.user-bind-pattern": "${USER}@test.local",
+      "ldap.ssl-trust-certificate": "/tmp/ca.pem"
+    }
+  },
+  {
+    "Classification": "oozie-site",
+    "Properties": {
+      "oozie.service.JPAService.jdbc.driver": "com.mysql.jdbc.Driver",
+      "oozie.service.JPAService.jdbc.url": "jdbc:mysql://test1.cluster-cluqkc7jqkna.ap-northeast-1.rds.amazonaws.com:3306/oozie",
+      "oozie.service.JPAService.jdbc.username": "admin",
+      "oozie.service.JPAService.jdbc.password": "******"
+    },
+    "Configurations": []
+  },
+  {
+    "Classification": "spark-hive-site",
+    "Properties": {
+      "hive.metastore.client.factory.class": "com.amazonaws.glue.catalog.metastore.AWSGlueDataCatalogHiveClientFactory"
+    }
+  },
+  {
+    "Classification": "prestosql-connector-hive",
+    "Properties": {
+      "hive.metastore": "glue"
+    }
+  },
+  {
+    "Classification": "hive-site",
+    "Properties": {
+      "hive.metastore.client.factory.class": "com.amazonaws.glue.catalog.metastore.AWSGlueDataCatalogHiveClientFactory",
+      "hive.server2.authentication": "LDAP",
+      "hive.server2.authentication.ldap.url": "ldap://EC2AMAZ-IU0GKU9.test.local:389",
+      "hive.server2.authentication.ldap.Domain": "test.local"
+    }
+  },
+  {
+    "Classification": "hue-ini",
+    "Properties": {},
+    "Configurations": [
+      {
+        "Classification": "beeswax",
+        "Properties": {
+          "auth_username": "hue",
+          "auth_password": "******"
+        },
+        "Configurations": []
+      },
+      {
+        "Classification": "notebook",
+        "Properties": {},
+        "Configurations": [
+          {
+            "Classification": "interpreters",
+            "Properties": {},
+            "Configurations": [
+              {
+                "Classification": "presto",
+                "Properties": {
+                  "interface": "presto"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "Classification": "desktop",
+        "Properties": {},
+        "Configurations": [
+          {
+            "Classification": "database",
+            "Properties": {
+              "name": "hue",
+              "user": "admin",
+              "password": "******",
+              "host": "test1.cluster-cluqkc7jqkna.ap-northeast-1.rds.amazonaws.com",
+              "port": "3306",
+              "engine": "mysql"
+            },
+            "Configurations": []
+          },
+          {
+            "Classification": "ldap",
+            "Properties": {},
+            "Configurations": [
+              {
+                "Classification": "ldap_servers",
+                "Properties": {},
+                "Configurations": [
+                  {
+                    "Classification": "ldap-hue",
+                    "Properties": {
+                      "bind_dn": "hive@test.local",
+                      "bind_password": "******",
+                      "search_bind_authentication": "true",
+                      "base_dn": "dc=test,dc=local",
+                      "ldap_username_pattern": "uid=<username>,cn=users,dc=test,dc=local",
+                      "nt_domain": "test.local",
+                      "ldap_url": "ldap://EC2AMAZ-IU0GKU9.test.local",
+                      "use_start_tls": "false"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "Classification": "auth",
+            "Properties": {
+              "backend": "desktop.auth.backend.LdapBackend"
+            }
+          }
+        ]
+      }
+    ]
+  }
+]
