@@ -19,7 +19,7 @@
       "oozie.service.JPAService.jdbc.driver": "com.mysql.jdbc.Driver",
       "oozie.service.JPAService.jdbc.url": "jdbc:mysql://test1.cluster-cluqkc7jqkna.ap-northeast-1.rds.amazonaws.com:3306/oozie",
       "oozie.service.JPAService.jdbc.username": "admin",
-      "oozie.service.JPAService.jdbc.password": "1qazxsw2"
+      "oozie.service.JPAService.jdbc.password": "******"
     },
     "Configurations": []
   },
@@ -52,7 +52,7 @@
         "Classification": "beeswax",
         "Properties": {
           "auth_username": "hive",
-          "auth_password": "123456"
+          "auth_password": "******"
         },
         "Configurations": []
       },
@@ -83,7 +83,7 @@
             "Properties": {
               "name": "hue",
               "user": "admin",
-              "password": "1qazxsw2",
+              "password": "******",
               "host": "test1.cluster-cluqkc7jqkna.ap-northeast-1.rds.amazonaws.com",
               "port": "3306",
               "engine": "mysql"
@@ -106,7 +106,7 @@
                       "search_bind_authentication": "false",
                       "ldap_username_pattern": "uid=<username>,dc=ap-northeast-1,dc=compute,dc=internal",
                       "bind_dn": "uid=hive,dc=ap-northeast-1,dc=compute,dc=internal",
-                      "bind_password": "123456"
+                      "bind_password": "******"
                     },
                     "Configurations": [
                       {
